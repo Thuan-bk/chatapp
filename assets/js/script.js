@@ -1,5 +1,5 @@
 // Import the functions you need from the SDKs you need
-import {getDatabase,ref,push,set, onValue,update,remove} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+import {getDatabase,ref,push,set, onValue,update,remove, onChildAdded, onChildChanged, onChildRemoved} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword,signInWithEmailAndPassword, signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
@@ -20,26 +20,30 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getDatabase(app);
+let currentUser = null;
+
 // kiểm tra trạng thái đăng nhập
 const buttonLogin = document.querySelector("[button-login]");
 const buttonRegister = document.querySelector("[button-register]");
 const buttonLogout = document.querySelector("[button-logout]");
 const chat = document.querySelector("[chat]");
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-          buttonLogout.style.display = "inline-block";
-          chat.style.display = "block";
-        } else {
-            buttonLogin.style.display = "inline-block";
-            buttonRegister.style.display = "inline-block";
-            if (chat) {
-                chat.innerHTML = "Vui lòng đăng nhập để sử dụng ứng dụng";
-            }
-            
-        }
-    });
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    buttonLogout.style.display = "inline-block";
+    chat.style.display = "block";
+  } else {
+    buttonLogin.style.display = "inline-block";
+    buttonRegister.style.display = "inline-block";
+    
+    if (chat) {
+        chat.innerHTML = `<i>Vui lòng đăng nhập để sử dụng ứng dụng</i>`;
+    }
+      
+  }
+});
  
-
+    
 // hết kiểm tra trạng thái đăng nhập 
 
 
@@ -125,3 +129,61 @@ if (buttonLogout) {
 }
 
 //Hết Tính năng đăng xuất
+
+
+//form chat
+const formChat = document.querySelector("[chat] .inner-form");
+if (formChat) {
+  formChat.addEventListener("submit", (event)=> {
+    event.preventDefault();
+
+    const content = formChat.content.value;
+    const userId = auth.currentUser.uid;
+    if (content && userId) {
+      set(push(ref(db, "chats")), {
+        content: content,
+        userId: userId
+      })
+    }
+    formChat.content.value = "";
+  })
+}
+//Het form chat
+
+// hien thi tin nhăn ra giao diện
+
+const chatBody = document.querySelector("[chat] .inner-body")
+if (chatBody) {
+  const chatsRef = ref(db , 'chats');
+  onChildAdded(chatsRef, (data) => {
+    const key = data.key;
+    const content = data.val().content;
+    const userId = data.val().userId;
+    const newChat = document.createElement("div");
+
+    let htmlFullName = "";
+
+    if (userId == currentUser.uid) {
+      newChat.classList.add("inner-outgoing");
+    } else {
+      newChat.classList.add("inner-incoming");
+      htmlFullName = `
+        <div class="inner-name">
+        ${userId}
+        </div>
+      `;
+    }
+
+
+    newChat.innerHTML = `
+      ${htmlFullName}
+      <div class="inner-content">
+        ${content}
+      </div>
+    `;
+
+    chatBody.appendChild(newChat);
+    // addCommentElement(postElement, data.key, data.val().text, data.val().author);
+  })
+}
+//het hien thi tin nhăn ra giao diện
