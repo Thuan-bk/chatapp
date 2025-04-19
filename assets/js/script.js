@@ -1,5 +1,5 @@
 // Import the functions you need from the SDKs you need
-import {getDatabase,ref,push,set, onValue,update,remove, onChildAdded, onChildChanged, onChildRemoved} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
+import {getDatabase,ref,push,set, onValue,update,remove, onChildAdded, onChildChanged, onChildRemoved, get, child} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword,signInWithEmailAndPassword, signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
@@ -20,6 +20,8 @@ const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getDatabase(app);
+const dbRef = ref(getDatabase());
+const chatsRef = ref(db , 'chats');
 let currentUser = null;
 
 // kiểm tra trạng thái đăng nhập
@@ -154,22 +156,32 @@ if (formChat) {
 
 const chatBody = document.querySelector("[chat] .inner-body")
 if (chatBody) {
-  const chatsRef = ref(db , 'chats');
+  
   onChildAdded(chatsRef, (data) => {
     const key = data.key;
     const content = data.val().content;
     const userId = data.val().userId;
-    const newChat = document.createElement("div");
 
+    get(child(dbRef, `users/${userId}`)).then((snapshot) => {
+      if (snapshot.exists()) {
+        const fullName = snapshot.val().fullName;
+        const newChat = document.createElement("div");
+        newChat.setAttribute("chat-id",key);
     let htmlFullName = "";
+    let htmlButtonDelete = "";
 
     if (userId == currentUser.uid) {
       newChat.classList.add("inner-outgoing");
+      htmlButtonDelete = `
+        <button class = "button-delete" button-delete = "${key}">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      `
     } else {
       newChat.classList.add("inner-incoming");
       htmlFullName = `
         <div class="inner-name">
-        ${userId}
+        ${fullName}
         </div>
       `;
     }
@@ -180,10 +192,41 @@ if (chatBody) {
       <div class="inner-content">
         ${content}
       </div>
+      ${htmlButtonDelete}
     `;
 
     chatBody.appendChild(newChat);
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    // Xóa tin nhắn
+    const buttonDelete = newChat.querySelector(".button-delete");
+    if (buttonDelete) {
+      buttonDelete.addEventListener("click" , () => {
+        remove(ref(db, '/chats/'+key));
+      })
+    }
+
+
+      } else {
+        console.log("No data available");
+      }
+    }).catch((error) => {
+      console.error(error);
+    });
+
+    
     // addCommentElement(postElement, data.key, data.val().text, data.val().author);
   })
 }
 //het hien thi tin nhăn ra giao diện
+
+// tính năng xóa tin nhắn
+onChildRemoved(chatsRef, (data) => {
+  const key = data.key;
+  const chatItem = chatBody.querySelector(`[chat-id = "${key}"]`)
+  if(chatItem) {
+    chatItem.remove();
+  }
+});
+
+// hết tính năng xóa tin nhắn
