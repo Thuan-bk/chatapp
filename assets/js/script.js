@@ -3,6 +3,9 @@ import {getDatabase,ref,push,set, onValue,update,remove, onChildAdded, onChildCh
 import { getAuth, createUserWithEmailAndPassword,signInWithEmailAndPassword, signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-analytics.js";
+import * as Popper from 'https://cdn.jsdelivr.net/npm/@popperjs/core@^2/dist/esm/index.js'
+// import { FileUploadWithPreview } from 'file-upload-with-preview';
+// import 'file-upload-with-preview/dist/style.css';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAkXa5mPS6_Vlec5i2Wkk-RAvtl4fSELck",
@@ -136,18 +139,51 @@ if (buttonLogout) {
 //form chat
 const formChat = document.querySelector("[chat] .inner-form");
 if (formChat) {
-  formChat.addEventListener("submit", (event)=> {
+  // điều chỉnh số lượng file ảnh có thể đăng lên
+  const upload = new FileUploadWithPreview.FileUploadWithPreview('upload-images', {
+    maxFilecount : 6,
+    multiple: true
+  });
+  formChat.addEventListener("submit",async (event)=> {
     event.preventDefault();
 
     const content = formChat.content.value;
     const userId = auth.currentUser.uid;
-    if (content && userId) {
+    const images = upload.cachedFileArray || [];
+    
+    
+    if( (content || images.length >0) && userId) {
+      const imageLinks = [];
+      if (images.length > 0) {
+        const url = 'https://api.cloudinary.com/v1_1/dmggonant/image/upload';
+        const formData = new FormData();
+        for (let i = 0; i < images.length; i++) {
+          let file = images[i];
+          formData.append('file', file);
+          formData.append('upload_preset', 'chat-app');
+      // dùng hàm await để chờ cho hàm fetch lấy dc dữ liệu thì mới chạy tiếp ,  và muốn dùng dc hàm await thì hàm cha phải có từ khóa  async
+          await fetch(url, {
+            method: 'POST',
+            body: formData,
+          })
+            .then((response) => {
+              return response.json();
+            })
+            .then((data) => {
+              imageLinks.push(data.url)
+              
+            });
+        }
+      }
       set(push(ref(db, "chats")), {
         content: content,
-        userId: userId
+        userId: userId,
+        images: imageLinks
       })
+      formChat.content.value = "";
+      upload.resetPreviewPanel();
     }
-    formChat.content.value = "";
+    
   })
 }
 //Het form chat
@@ -161,6 +197,7 @@ if (chatBody) {
     const key = data.key;
     const content = data.val().content;
     const userId = data.val().userId;
+    const images = data.val().images;
 
     get(child(dbRef, `users/${userId}`)).then((snapshot) => {
       if (snapshot.exists()) {
@@ -169,7 +206,7 @@ if (chatBody) {
         newChat.setAttribute("chat-id",key);
     let htmlFullName = "";
     let htmlButtonDelete = "";
-
+        
     if (userId == currentUser.uid) {
       newChat.classList.add("inner-outgoing");
       htmlButtonDelete = `
@@ -186,12 +223,30 @@ if (chatBody) {
       `;
     }
 
+    let htmlContent = "";
+    if (content) {
+      htmlContent = `
+        <div class="inner-content">
+        ${content}
+      </div>
+      `
+    }
+
+    let htmlImage = "";
+    if (images && images.length > 0) {
+      htmlImage +=  `<div class="inner-images">`
+      for (const image of images) {
+        htmlImage +=  `<img src="${image}" />`
+      }
+      
+      htmlImage +=  `</div>`
+      
+    }
 
     newChat.innerHTML = `
       ${htmlFullName}
-      <div class="inner-content">
-        ${content}
-      </div>
+      ${htmlContent}
+      ${htmlImage}
       ${htmlButtonDelete}
     `;
 
@@ -230,3 +285,37 @@ onChildRemoved(chatsRef, (data) => {
 });
 
 // hết tính năng xóa tin nhắn
+
+
+//chèn icon
+const emojiPicker = document.querySelector('emoji-picker');
+
+if(emojiPicker) {
+  const button = document.querySelector('.button-icon')
+  const buttonIcon = document.querySelector('.button-icon i')
+  const tooltip = document.querySelector('.tooltip')
+  Popper.createPopper(button, tooltip)
+
+  document.querySelector('.button-icon').onclick = () => {
+    tooltip.classList.toggle('shown')
+  }
+  const inputChat = document.querySelector(".chat .inner-form input[name = 'content']");
+  emojiPicker.addEventListener('emoji-click', event =>{ 
+    const icon = event.detail.unicode;
+    inputChat.value += icon;
+  });
+
+  document.addEventListener("click", (event) => {
+    // console.log(event.target);
+    if (!emojiPicker.contains(event.target) && event.target != button && event.target != buttonIcon){
+      tooltip.classList.remove('shown');
+    } 
+  })
+}
+
+// hết chèn icon
+
+
+
+
+  
