@@ -260,7 +260,9 @@ if (chatBody) {
         remove(ref(db, '/chats/'+key));
       })
     }
-
+    // zoom ảnh 
+    new Viewer(newChat);
+    
 
       } else {
         console.log("No data available");
