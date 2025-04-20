@@ -8,7 +8,7 @@ import * as Popper from 'https://cdn.jsdelivr.net/npm/@popperjs/core@^2/dist/esm
 // import 'file-upload-with-preview/dist/style.css';
 
 const firebaseConfig = {
-  apiKey: "your api",
+  apiKey: "AIzaSyAkXa5mPS6_Vlec5i2Wkk-RAvtl4fSELck",
   authDomain: "chat-app-3e25d.firebaseapp.com",
   databaseURL: "https://chat-app-3e25d-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "chat-app-3e25d",
